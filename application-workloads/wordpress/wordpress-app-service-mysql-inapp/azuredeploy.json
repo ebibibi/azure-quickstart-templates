@@ -1,0 +1,126 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.6.18.56646",
+      "templateHash": "9052671895175071670"
+    }
+  },
+  "parameters": {
+    "sku": {
+      "type": "string",
+      "defaultValue": "F1",
+      "allowedValues": [
+        "F1",
+        "B1",
+        "S1"
+      ],
+      "metadata": {
+        "description": "SKU (App Service Pricing Tier)"
+      }
+    },
+    "repoUrl": {
+      "type": "string",
+      "defaultValue": "https://github.com/azureappserviceoss/wordpress-azure",
+      "metadata": {
+        "description": "GitHub repo to deploy to App Service"
+      }
+    },
+    "branch": {
+      "type": "string",
+      "defaultValue": "master",
+      "metadata": {
+        "description": "GitHub repo branch to deploy to App Service"
+      }
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    }
+  },
+  "variables": {
+    "uniqueHostingPlan": "[format('{0}hostingplan', uniqueString(resourceGroup().id))]",
+    "uniqueSite": "[format('{0}website', uniqueString(resourceGroup().id))]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2020-06-01",
+      "name": "[variables('uniqueHostingPlan')]",
+      "sku": {
+        "name": "[parameters('sku')]",
+        "capacity": 1
+      },
+      "location": "[parameters('location')]",
+      "properties": {}
+    },
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2020-06-01",
+      "name": "[variables('uniqueSite')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('uniqueHostingPlan'))]",
+        "siteConfig": {
+          "localMySqlEnabled": true,
+          "appSettings": [
+            {
+              "name": "WEBSITE_MYSQL_ENABLED",
+              "value": "1"
+            },
+            {
+              "name": "WEBSITE_MYSQL_GENERAL_LOG",
+              "value": "0"
+            },
+            {
+              "name": "WEBSITE_MYSQL_SLOW_QUERY_LOG",
+              "value": "0"
+            },
+            {
+              "name": "WEBSITE_MYSQL_ARGUMENTS",
+              "value": "--max_allowed_packet=16M"
+            }
+          ]
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/serverfarms', variables('uniqueHostingPlan'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/sourcecontrols",
+      "apiVersion": "2020-06-01",
+      "name": "[format('{0}/{1}', variables('uniqueSite'), 'web')]",
+      "properties": {
+        "repoUrl": "[parameters('repoUrl')]",
+        "branch": "[parameters('branch')]",
+        "isManualIntegration": true
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('uniqueSite'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Web/sites/config",
+      "apiVersion": "2020-06-01",
+      "name": "[format('{0}/{1}', variables('uniqueSite'), 'web')]",
+      "properties": {
+        "phpVersion": "7.0"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('uniqueSite'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "siteurl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.Web/sites', variables('uniqueSite'))).hostNames[0]]"
+    }
+  }
+}

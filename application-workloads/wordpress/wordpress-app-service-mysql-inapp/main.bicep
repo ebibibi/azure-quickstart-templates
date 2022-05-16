@@ -75,3 +75,4 @@ resource Microsoft_Web_sites_config_site_web 'Microsoft.Web/sites/config@2020-06
   }
 }
 
+output siteurl string = site.properties.hostNames[0]
